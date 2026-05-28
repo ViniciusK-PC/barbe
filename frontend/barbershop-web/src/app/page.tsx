@@ -3,14 +3,16 @@
 import {
   CalendarDays,
   CheckCircle2,
+  Clock3,
   Home,
-  LayoutDashboard,
   Package,
   Plus,
   Scissors,
+  Shield,
   ShoppingBag,
   Store,
 } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Service = {
@@ -29,53 +31,26 @@ type Product = {
   stockQuantity: number;
 };
 
-type Appointment = {
-  id: number;
-  customerName: string;
-  customerPhone: string;
-  serviceName: string;
-  startAt: string;
-  endAt: string;
-  status: string;
-};
-
-type AdminSummary = {
-  appointmentsToday: number;
-  pendingOrders: number;
-  productsLowStock: number;
-  monthlyRevenue: number;
-};
-
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:7026";
 
 const fallbackServices: Service[] = [
   { id: 1, name: "Corte masculino", description: "Tesoura ou maquina com acabamento.", durationMinutes: 40, price: 45 },
   { id: 2, name: "Barba completa", description: "Toalha quente, navalha e finalizacao.", durationMinutes: 30, price: 35 },
-  { id: 3, name: "Corte + barba", description: "Combo completo.", durationMinutes: 70, price: 75 },
+  { id: 3, name: "Corte + barba", description: "Combo completo para sair pronto.", durationMinutes: 70, price: 75 },
 ];
 
 const fallbackProducts: Product[] = [
-  { id: 1, name: "Pomada modeladora", description: "Fixacao media.", price: 39.9, stockQuantity: 18 },
-  { id: 2, name: "Oleo para barba", description: "Hidratacao e brilho.", price: 49.9, stockQuantity: 12 },
-  { id: 3, name: "Shampoo de barba", description: "Uso diario.", price: 34.9, stockQuantity: 20 },
+  { id: 1, name: "Pomada modeladora", description: "Fixacao media com acabamento natural.", price: 39.9, stockQuantity: 18 },
+  { id: 2, name: "Oleo para barba", description: "Hidrata e deixa a barba alinhada.", price: 49.9, stockQuantity: 12 },
+  { id: 3, name: "Shampoo de barba", description: "Limpeza suave para uso diario.", price: 34.9, stockQuantity: 20 },
 ];
 
-const fallbackSummary: AdminSummary = {
-  appointmentsToday: 0,
-  pendingOrders: 0,
-  productsLowStock: 0,
-  monthlyRevenue: 0,
-};
-
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const time = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState("home");
   const [services, setServices] = useState<Service[]>(fallbackServices);
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [summary, setSummary] = useState<AdminSummary>(fallbackSummary);
   const [selectedServiceId, setSelectedServiceId] = useState("1");
   const [selectedProductId, setSelectedProductId] = useState("1");
   const [message, setMessage] = useState("");
@@ -91,17 +66,13 @@ export default function HomePage() {
   }, []);
 
   const loadData = useCallback(async () => {
-    const [serviceData, productData, appointmentData, summaryData] = await Promise.all([
+    const [serviceData, productData] = await Promise.all([
       getJson<Service[]>("/api/services", fallbackServices),
       getJson<Product[]>("/api/products", fallbackProducts),
-      getJson<Appointment[]>("/api/appointments", []),
-      getJson<AdminSummary>("/api/admin/summary", fallbackSummary),
     ]);
 
     setServices(serviceData);
     setProducts(productData);
-    setAppointments(appointmentData);
-    setSummary(summaryData);
   }, [getJson]);
 
   useEffect(() => {
@@ -126,7 +97,7 @@ export default function HomePage() {
       }),
     }).catch(() => null);
 
-    setMessage(response?.ok ? "Horario agendado com sucesso." : "Nao foi possivel agendar agora.");
+    setMessage(response?.ok ? "Horario reservado. A barbearia recebeu seu agendamento." : "Nao foi possivel agendar esse horario.");
     if (response?.ok) {
       event.currentTarget.reset();
       await loadData();
@@ -147,7 +118,7 @@ export default function HomePage() {
       }),
     }).catch(() => null);
 
-    setMessage(response?.ok ? "Pedido enviado para a barbearia." : "Nao foi possivel enviar o pedido.");
+    setMessage(response?.ok ? "Pedido enviado. O barbeiro vai separar seu produto." : "Nao foi possivel enviar o pedido.");
     if (response?.ok) {
       event.currentTarget.reset();
       await loadData();
@@ -165,30 +136,32 @@ export default function HomePage() {
   );
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-stone-50">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-stone-50/95 px-5 pb-4 pt-5 backdrop-blur">
-        <div className="flex items-center justify-between">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-[#f8f5ef] text-zinc-950">
+      <header className="sticky top-0 z-10 border-b border-zinc-200/80 bg-[#f8f5ef]/95 px-5 pb-4 pt-5 backdrop-blur">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-amber-700">Barbearia premium</p>
-            <h1 className="text-2xl font-bold tracking-normal">BarberShop</h1>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Barbearia premium</p>
+            <h1 className="mt-1 text-2xl font-black tracking-normal">BarberShop</h1>
           </div>
-          <div className="grid size-11 place-items-center rounded-full bg-zinc-950 text-white">
-            <Scissors size={22} />
-          </div>
+          <Link
+            aria-label="Entrar no painel admin"
+            className="grid size-11 place-items-center rounded-md border border-zinc-300 bg-white text-zinc-800 shadow-sm"
+            href="/admin"
+          >
+            <Shield size={20} />
+          </Link>
         </div>
       </header>
 
       <section className="flex-1 px-5 pb-28 pt-5">
         {message ? (
-          <div className="mb-4 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
             <CheckCircle2 size={18} />
             {message}
           </div>
         ) : null}
 
-        {activeTab === "home" ? (
-          <HomeView services={services} products={products} />
-        ) : null}
+        {activeTab === "home" ? <HomeView services={services} products={products} setActiveTab={setActiveTab} /> : null}
 
         {activeTab === "schedule" ? (
           <ScheduleView
@@ -209,63 +182,82 @@ export default function HomePage() {
             setSelectedProductId={setSelectedProductId}
           />
         ) : null}
-
-        {activeTab === "admin" ? <AdminView appointments={appointments} summary={summary} /> : null}
       </section>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md border-t border-zinc-200 bg-white px-4 pb-4 pt-2">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <TabButton active={activeTab === "home"} icon={<Home size={20} />} label="Inicio" onClick={() => setActiveTab("home")} />
           <TabButton active={activeTab === "schedule"} icon={<CalendarDays size={20} />} label="Agenda" onClick={() => setActiveTab("schedule")} />
           <TabButton active={activeTab === "shop"} icon={<Store size={20} />} label="Loja" onClick={() => setActiveTab("shop")} />
-          <TabButton active={activeTab === "admin"} icon={<LayoutDashboard size={20} />} label="Admin" onClick={() => setActiveTab("admin")} />
         </div>
       </nav>
     </main>
   );
 }
 
-function HomeView({ services, products }: { services: Service[]; products: Product[] }) {
+function HomeView({
+  products,
+  services,
+  setActiveTab,
+}: {
+  products: Product[];
+  services: Service[];
+  setActiveTab: (tab: string) => void;
+}) {
   return (
     <div className="space-y-5">
-      <section className="rounded-md bg-zinc-950 p-5 text-white">
-        <p className="text-sm text-amber-300">Aberto hoje</p>
-        <h2 className="mt-2 text-3xl font-bold tracking-normal">Corte, barba e produtos no celular.</h2>
-        <p className="mt-3 text-sm leading-6 text-zinc-300">Agendamento rapido, loja simples e painel para o barbeiro acompanhar tudo.</p>
+      <section className="overflow-hidden rounded-md bg-zinc-950 text-white shadow-xl">
+        <div className="border-b border-white/10 px-5 py-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-semibold text-amber-300">Aberto hoje</span>
+            <span className="flex items-center gap-1 text-zinc-300">
+              <Clock3 size={15} />
+              09:00 - 20:00
+            </span>
+          </div>
+        </div>
+        <div className="px-5 py-6">
+          <h2 className="text-3xl font-black leading-tight tracking-normal">Visual alinhado sem espera.</h2>
+          <p className="mt-3 text-sm leading-6 text-zinc-300">Agende corte, barba e compre produtos selecionados direto pelo celular.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button className="h-12 rounded-md bg-amber-500 px-4 font-bold text-zinc-950" onClick={() => setActiveTab("schedule")} type="button">
+              Agendar
+            </button>
+            <button className="h-12 rounded-md border border-white/15 px-4 font-bold text-white" onClick={() => setActiveTab("shop")} type="button">
+              Ver loja
+            </button>
+          </div>
+        </div>
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Servicos</h2>
-          <Scissors size={19} className="text-amber-700" />
-        </div>
-        <div className="space-y-3">
+        <SectionTitle title="Servicos em destaque" icon={<Scissors size={20} />} />
+        <div className="mt-3 space-y-3">
           {services.map((service) => (
-            <div key={service.id} className="rounded-md border border-zinc-200 bg-white p-4">
+            <div key={service.id} className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold">{service.name}</h3>
-                  <p className="mt-1 text-sm text-zinc-600">{service.description}</p>
+                  <h3 className="font-bold">{service.name}</h3>
+                  <p className="mt-1 text-sm leading-5 text-zinc-600">{service.description}</p>
                 </div>
-                <span className="whitespace-nowrap text-sm font-bold">{money.format(service.price)}</span>
+                <span className="whitespace-nowrap rounded-md bg-zinc-100 px-2 py-1 text-sm font-black">{money.format(service.price)}</span>
               </div>
-              <p className="mt-3 text-xs font-medium text-zinc-500">{service.durationMinutes} min</p>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-amber-700">{service.durationMinutes} min</p>
             </div>
           ))}
         </div>
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Mais vendidos</h2>
-          <ShoppingBag size={19} className="text-amber-700" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+        <SectionTitle title="Produtos da casa" icon={<ShoppingBag size={20} />} />
+        <div className="mt-3 grid grid-cols-2 gap-3">
           {products.slice(0, 2).map((product) => (
-            <div key={product.id} className="rounded-md border border-zinc-200 bg-white p-4">
-              <Package className="mb-4 text-zinc-700" size={24} />
-              <h3 className="font-semibold">{product.name}</h3>
-              <p className="mt-2 text-sm font-bold">{money.format(product.price)}</p>
+            <div key={product.id} className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 grid size-10 place-items-center rounded-md bg-amber-100 text-amber-800">
+                <Package size={22} />
+              </div>
+              <h3 className="font-bold leading-5">{product.name}</h3>
+              <p className="mt-2 text-sm font-black">{money.format(product.price)}</p>
             </div>
           ))}
         </div>
@@ -283,11 +275,11 @@ function ScheduleView(props: {
 }) {
   return (
     <form className="space-y-4" onSubmit={props.createAppointment}>
-      <SectionTitle title="Agendar horario" icon={<CalendarDays size={20} />} />
+      <SectionTitle title="Reservar horario" icon={<CalendarDays size={20} />} />
       <Input name="customerName" placeholder="Nome do cliente" required />
       <Input name="customerPhone" placeholder="WhatsApp" required />
       <Input name="customerEmail" placeholder="E-mail opcional" type="email" />
-      <select className="h-12 w-full rounded-md border border-zinc-300 bg-white px-3" value={props.selectedServiceId} onChange={(event) => props.setSelectedServiceId(event.target.value)}>
+      <select className="h-12 w-full rounded-md border border-zinc-300 bg-white px-3 font-medium" value={props.selectedServiceId} onChange={(event) => props.setSelectedServiceId(event.target.value)}>
         {props.services.map((service) => (
           <option key={service.id} value={service.id}>
             {service.name}
@@ -295,11 +287,11 @@ function ScheduleView(props: {
         ))}
       </select>
       <Input name="startAt" type="datetime-local" required />
-      <textarea name="notes" className="min-h-24 w-full rounded-md border border-zinc-300 bg-white px-3 py-3" placeholder="Observacoes" />
-      <div className="rounded-md bg-amber-50 p-4 text-sm text-amber-900">
+      <textarea name="notes" className="min-h-24 w-full rounded-md border border-zinc-300 bg-white px-3 py-3 outline-none focus:border-zinc-950" placeholder="Observacoes" />
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-950">
         {props.selectedService?.name}: {props.selectedService?.durationMinutes} min, {money.format(props.selectedService?.price ?? 0)}
       </div>
-      <PrimaryButton icon={<Plus size={19} />} label="Confirmar agendamento" />
+      <PrimaryButton icon={<Plus size={19} />} label="Confirmar reserva" />
     </form>
   );
 }
@@ -313,26 +305,26 @@ function ShopView(props: {
 }) {
   return (
     <div className="space-y-5">
-      <SectionTitle title="Loja do barbeiro" icon={<Store size={20} />} />
+      <SectionTitle title="Loja da barbearia" icon={<Store size={20} />} />
       <div className="space-y-3">
         {props.products.map((product) => (
-          <div key={product.id} className="rounded-md border border-zinc-200 bg-white p-4">
+          <div key={product.id} className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="font-semibold">{product.name}</h3>
-                <p className="mt-1 text-sm text-zinc-600">{product.description}</p>
+                <h3 className="font-bold">{product.name}</h3>
+                <p className="mt-1 text-sm leading-5 text-zinc-600">{product.description}</p>
               </div>
-              <span className="text-sm font-bold">{money.format(product.price)}</span>
+              <span className="text-sm font-black">{money.format(product.price)}</span>
             </div>
-            <p className="mt-3 text-xs font-medium text-zinc-500">Estoque: {product.stockQuantity}</p>
+            <p className="mt-3 text-xs font-bold uppercase tracking-wide text-zinc-500">Estoque: {product.stockQuantity}</p>
           </div>
         ))}
       </div>
-      <form className="space-y-4 rounded-md border border-zinc-200 bg-white p-4" onSubmit={props.createOrder}>
-        <h3 className="font-bold">Novo pedido</h3>
+      <form className="space-y-4 rounded-md border border-zinc-200 bg-white p-4 shadow-sm" onSubmit={props.createOrder}>
+        <h3 className="font-black">Novo pedido</h3>
         <Input name="customerName" placeholder="Nome do cliente" required />
         <Input name="customerPhone" placeholder="WhatsApp" required />
-        <select className="h-12 w-full rounded-md border border-zinc-300 bg-white px-3" value={props.selectedProductId} onChange={(event) => props.setSelectedProductId(event.target.value)}>
+        <select className="h-12 w-full rounded-md border border-zinc-300 bg-white px-3 font-medium" value={props.selectedProductId} onChange={(event) => props.setSelectedProductId(event.target.value)}>
           {props.products.map((product) => (
             <option key={product.id} value={product.id}>
               {product.name}
@@ -340,48 +332,16 @@ function ShopView(props: {
           ))}
         </select>
         <Input min={1} name="quantity" placeholder="Quantidade" required type="number" />
-        <div className="text-sm text-zinc-600">Produto selecionado: {props.selectedProduct?.name}</div>
+        <div className="text-sm font-medium text-zinc-600">Selecionado: {props.selectedProduct?.name}</div>
         <PrimaryButton icon={<ShoppingBag size={19} />} label="Enviar pedido" />
       </form>
     </div>
   );
 }
 
-function AdminView({ appointments, summary }: { appointments: Appointment[]; summary: AdminSummary }) {
-  return (
-    <div className="space-y-5">
-      <SectionTitle title="Painel admin" icon={<LayoutDashboard size={20} />} />
-      <div className="grid grid-cols-2 gap-3">
-        <Metric label="Agenda hoje" value={summary.appointmentsToday} />
-        <Metric label="Pedidos" value={summary.pendingOrders} />
-        <Metric label="Baixo estoque" value={summary.productsLowStock} />
-        <Metric label="Receita mes" value={money.format(summary.monthlyRevenue)} />
-      </div>
-      <section>
-        <h2 className="mb-3 text-lg font-bold">Proximos horarios</h2>
-        <div className="space-y-3">
-          {appointments.length === 0 ? (
-            <div className="rounded-md border border-zinc-200 bg-white p-4 text-sm text-zinc-600">Nenhum horario carregado ainda.</div>
-          ) : (
-            appointments.map((appointment) => (
-              <div key={appointment.id} className="rounded-md border border-zinc-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{appointment.customerName}</h3>
-                  <span className="text-sm font-bold">{time.format(new Date(appointment.startAt))}</span>
-                </div>
-                <p className="mt-1 text-sm text-zinc-600">{appointment.serviceName}</p>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
 function TabButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button className={`flex h-14 flex-col items-center justify-center gap-1 rounded-md text-xs font-semibold ${active ? "bg-zinc-950 text-white" : "text-zinc-500"}`} onClick={onClick} type="button">
+    <button className={`flex h-14 flex-col items-center justify-center gap-1 rounded-md text-xs font-bold ${active ? "bg-zinc-950 text-white" : "text-zinc-500"}`} onClick={onClick} type="button">
       {icon}
       {label}
     </button>
@@ -391,7 +351,7 @@ function TabButton({ active, icon, label, onClick }: { active: boolean; icon: Re
 function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-xl font-bold">{title}</h2>
+      <h2 className="text-xl font-black">{title}</h2>
       <span className="text-amber-700">{icon}</span>
     </div>
   );
@@ -403,18 +363,9 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 function PrimaryButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <button className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 font-bold text-white" type="submit">
+    <button className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 font-black text-white shadow-lg" type="submit">
       {icon}
       {label}
     </button>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-md border border-zinc-200 bg-white p-4">
-      <p className="text-xs font-semibold uppercase text-zinc-500">{label}</p>
-      <p className="mt-2 text-xl font-bold">{value}</p>
-    </div>
   );
 }
