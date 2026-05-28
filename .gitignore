@@ -1,0 +1,32 @@
+# build output
+bin/
+obj/
+
+# local tooling and editor files
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# frontend dependencies/build
+node_modules/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# environment/secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+
+# generated previews
+frontend-mobile-preview.png
+
+# OS files
+.DS_Store
+Thumbs.db
